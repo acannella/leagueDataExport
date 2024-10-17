@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import json
 import os
 from pathlib import Path
@@ -5,10 +6,14 @@ import sys
 import pandas as pd
 from yfpy.query import YahooFantasySportsQuery
 import csv
+from dateutil.parser import parse
 
 project_dir = Path("D:\\Projects\\yahoo_fantasy_football\\leagueDataExport")
 playerListFile = Path(os.path.join(project_dir, 'playerList.csv'))
 sys.path.insert(0, str(project_dir))
+
+suppliedYear = sys.argv[1]
+suppliedWeek = sys.argv[2]
 
 query = YahooFantasySportsQuery(
     league_id="224437",
@@ -36,7 +41,7 @@ def createTopScoringPlayersList(year, week):
     url = "https://www.fantasypros.com/nfl/reports/leaders/half-ppr.php?year=" + str(year) + "&start=" + str(week) + "&end=" + str(week)
     html = pd.read_html(url, header=0)
     df = html[0]
-    #get player names and points scored for that week
+    #get top 10 player names and points scored for that week
     topTenPlayerDataFrame = df[["Player", "TTL"]].iloc[:10]
     #add in the manager column to the dataframe
     topTenPlayerDataFrame.insert(2, 'Manager', '', True)
@@ -85,16 +90,35 @@ def createPowerRankingsList(week):
             writer.writerow(row)
         
 def createTransactionList(week):
-    #TODO: Populate start/end times
-        #filter transactions based on supplied week
-        #Create csv of transactions: team name, player name, action, date
-    with open('weekStartEndTimes.txt') as dict_reader:
-        weekStartEndTimesDict = json.loads(dict_reader.read())
-        print(weekStartEndTimesDict['1']['start'])
-    
-    #transactionList = query.get_league_transactions()
+    #Get the end date for the specified week, use parse to get datetime obj from that date, add 1 day to the end date to capture all transactions that week
+    weekEndDate = (parse(query.get_league_matchups_by_week(week)[0].week_end)) + timedelta(days=1)
+    #Transactions have UNIX timestamp so convert the week to UNIX value for comparison
+    weekEndDateUNIX = weekEndDate.timestamp()
+    #Get the start date for the specified week, use parse to get datetime obj from that date, add 1 day to the start date to capture all transactions that week
+    weekStartDate = (parse(query.get_league_matchups_by_week(week)[0].week_start)) + timedelta(days=1)
+    weekStartDateUNIX = weekStartDate.timestamp()
+    transactionList = query.get_league_transactions()
+    #Create new list of transactions filtered on the timestamp being >= week start date and <= week end date
+    filteredTransactionList = list(filter(lambda x: x.timestamp >= weekStartDateUNIX and x.timestamp <= weekEndDateUNIX, transactionList))
+    with open('week'+ str(week) + 'Transactions.csv', 'w', newline='') as csvfile:
+        writer =csv.writer(csvfile)
+        header = ['teamName', 'playerAction', 'playerName', 'transactionType', 'date']
+        writer.writerow(header)
+        for transaction in filteredTransactionList:
+            for player in transaction.players:
+                #Convert to readable date from unix timestamp
+                transactionDate = (datetime.fromtimestamp(transaction.timestamp)).strftime('%b %d %Y %H:%M:%S')
+                #Get the team name that is associated with the transaction
+                teamName = player.transaction_data.source_team_name if player.transaction_data.source_team_name != '' else player.transaction_data.destination_team_name
+                #Get the action related to the specific player: add, drop, or trade
+                playerActionType = player.transaction_data.type
+                playerName = player.full_name
+                #Get the overall transaction type, this is mainly for capturing when a player is added and another dropped within the same transaction
+                transactionType = transaction.type
+                row = [teamName, playerActionType, playerName, transactionType, transactionDate]
+                writer.writerow(row)
 
-#createTopScoringPlayersList(2024, 6)        
+#createTopScoringPlayersList(suppliedYear, suppliedWeek)        
 #createPlayerList()    
-#createPowerRankingsList(6)
-createTransactionList(6)
+#createPowerRankingsList(suppliedWeek)
+createTransactionList(suppliedWeek)
