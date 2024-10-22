@@ -28,7 +28,7 @@ query = YahooFantasySportsQuery(
 
 def createPlayerList():
     playerList = query.get_league_players()
-    header = ['playerName', 'playerKey']
+    header = ['Player Name', 'Player Key']
     with open('playerList.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(header)
@@ -51,16 +51,16 @@ def createTopScoringPlayersList(year, week):
     #create dataframe from the playerList csv
     playerListDataFrame = pd.read_csv(playerListFile, delimiter=',')
     #create dataframe from matching the playerList and the top scoring players, this gives us the players with their playerKey
-    playerListDataFrame = playerListDataFrame.loc[playerListDataFrame['playerName'].isin(topTenPlayerDataFrame["Player"])]
+    playerListDataFrame = playerListDataFrame.loc[playerListDataFrame['Player Name'].isin(topTenPlayerDataFrame["Player"])]
     with open('week'+ str(week) + 'TopScoringPlayers.csv', 'w', newline='') as csvfile:
-        header = ['playerName', 'Total', 'Manager']
+        header = ['Player Name', 'Fantasy Points', 'Manager']
         writer = csv.writer(csvfile)
         writer.writerow(header)
         for index, row in topTenPlayerDataFrame.iterrows():
             #get the player name of the row
             playerName = row['Player']
             #get the player key: search the test dataframe for a match on playerName, get the associated playerKey
-            playerKey = (playerListDataFrame.loc[playerListDataFrame['playerName'] == playerName])["playerKey"].values[0]
+            playerKey = (playerListDataFrame.loc[playerListDataFrame['Player Name'] == playerName])["Player Key"].values[0]
             #use the get_player_ownership function: access ownership -> owner_team_name
             manager = query.get_player_ownership(playerKey).ownership.owner_team_name
             #If manager doesn't have an owner team name, set manager to Free Agent
@@ -74,19 +74,23 @@ def createPowerRankingsList(week):
     teamStandings = query.get_league_standings()
     #create the powerRankings csv file for the week
     with open('week'+ str(week) + 'PowerRankings.csv', 'w', newline='') as csvfile:
-        header = ['teamName', 'Rank', 'pointsFor', 'pointsAgainst','Change', 'teamID']
+        header = ['Rank', 'Team Name', 'Rank Change', 'Record','Team Points For', 'Team Points Against', 'Team ID']
         writer = csv.writer(csvfile)
         writer.writerow(header)
         #Open previous week's csv as a dataframe
-        previousRankingsFile = Path(os.path.join(project_dir, 'week' +str(week -1) + 'PowerRankings.csv'))
+        previousRankingsFile = Path(os.path.join(project_dir, 'week' + str(int(week) - 1) + 'PowerRankings.csv'))
         previousRankingsDataFrame = pd.read_csv(previousRankingsFile, delimiter=',')
         for team in teamStandings.teams:
             #Get previous rank from the csv file, subtract that from the current rank to get the change
-            previousRank = previousRankingsDataFrame.loc[previousRankingsDataFrame['teamID'] == team.team_id]['Rank'].values[0]
+            previousRank = previousRankingsDataFrame.loc[previousRankingsDataFrame['Team ID'] == team.team_id]['Rank'].values[0]
             currentRank = team.rank
             rankChange = previousRank - currentRank
+            wins = team.team_standings.outcome_totals.wins
+            losses = team.team_standings.outcome_totals.losses
+            ties = team.team_standings.outcome_totals.ties
+            record = str(wins) + '-' + str(losses) + '-' + str(ties)
             #write the values to the current week file
-            row = [team.name.decode(), team.rank, team.points_for, team.points_against, rankChange, team.team_id]
+            row = [team.rank, team.name.decode(), rankChange, record, team.points_for, team.points_against, team.team_id]
             writer.writerow(row)
         
 def createTransactionList(week):
@@ -102,7 +106,7 @@ def createTransactionList(week):
     filteredTransactionList = list(filter(lambda x: x.timestamp >= weekStartDateUNIX and x.timestamp <= weekEndDateUNIX, transactionList))
     with open('week'+ str(week) + 'Transactions.csv', 'w', newline='') as csvfile:
         writer =csv.writer(csvfile)
-        header = ['teamName', 'playerAction', 'playerName', 'transactionType', 'date']
+        header = ['Team Name', 'Action', 'Player Name', 'transactionType', 'Date']
         writer.writerow(header)
         for transaction in filteredTransactionList:
             for player in transaction.players:
@@ -118,7 +122,7 @@ def createTransactionList(week):
                 row = [teamName, playerActionType, playerName, transactionType, transactionDate]
                 writer.writerow(row)
 
-#createTopScoringPlayersList(suppliedYear, suppliedWeek)        
-#createPlayerList()    
-#createPowerRankingsList(suppliedWeek)
+#createPlayerList() 
+createTopScoringPlayersList(suppliedYear, suppliedWeek)           
+createPowerRankingsList(suppliedWeek)
 createTransactionList(suppliedWeek)
