@@ -74,7 +74,7 @@ def createPowerRankingsList(week):
     teamStandings = query.get_league_standings()
     #create the powerRankings csv file for the week
     with open('week'+ str(week) + 'PowerRankings.csv', 'w', newline='') as csvfile:
-        header = ['Rank', 'Team Name', 'Rank Change', 'Record','Team Points For', 'Team Points Against', 'Team ID']
+        header = ['Rank', 'Team Name', 'Change', 'Record','Points For', 'Points Against', 'Team ID']
         writer = csv.writer(csvfile)
         writer.writerow(header)
         #Open previous week's csv as a dataframe
