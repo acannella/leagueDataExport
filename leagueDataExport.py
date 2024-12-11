@@ -90,7 +90,7 @@ def createPowerRankingsList(week):
             ties = team.team_standings.outcome_totals.ties
             record = str(wins) + '-' + str(losses) + '-' + str(ties)
             #write the values to the current week file
-            row = [team.rank, team.name.decode(), rankChange, record, team.points_for, team.points_against, team.team_id]
+            row = [team.rank, team.name.decode(), rankChange, record, round(team.points_for,2), round(team.points_against,2), team.team_id]
             writer.writerow(row)
         
 def createTransactionList(week):
