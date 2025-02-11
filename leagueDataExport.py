@@ -7,8 +7,12 @@ import pandas as pd
 from yfpy.query import YahooFantasySportsQuery
 import csv
 from dateutil.parser import parse
+import os
+from dotenv import load_dotenv
 
-project_dir = Path("D:\\Projects\\yahoo_fantasy_football\\leagueDataExport")
+load_dotenv()
+
+project_dir = Path(os.getenv("PROJECT_DIR"))
 playerListFile = Path(os.path.join(project_dir, 'playerList.csv'))
 sys.path.insert(0, str(project_dir))
 
@@ -16,12 +20,10 @@ suppliedYear = sys.argv[1]
 suppliedWeek = sys.argv[2]
 
 query = YahooFantasySportsQuery(
-    league_id="224437",
+    league_id=os.getenv("LEAGUE_ID"),
     game_code="nfl",
     game_id=449,
-    yahoo_consumer_key=os.environ.get("YAHOO_CONSUMER_KEY"),
-    yahoo_consumer_secret=os.environ.get("YAHOO_CONSUMER_SECRET"),
-    yahoo_access_token_json=os.environ.get("YAHOO_ACCESS_TOKEN_JSON"),
+    yahoo_access_token_json=os.getenv("YAHOO_ACCESS_TOKEN_JSON"),
     env_file_location=project_dir,
     save_token_data_to_env_file=True
 )
